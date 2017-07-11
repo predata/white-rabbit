@@ -1,0 +1,8 @@
+{
+  "phabricator.uri": "https://phabricator.predata.com/",
+  "arc.land.onto.default": "master",
+  "load" : [
+         "traphic/conphig"
+  ],
+  "arcanist_configuration": "Conphig"
+}
