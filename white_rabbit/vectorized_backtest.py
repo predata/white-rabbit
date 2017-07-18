@@ -1,20 +1,23 @@
-# pip-installed modules
 import numpy as np
 import pandas as pd
 from pandas.tseries.offsets import BDay
 
-# project modules
-from data.models import Signal
-from prices.models import Asset
 
-    
-def get_signal_exceedance_dates(signal_id, alpha, rolling_window, holding_period, ignore_overlapping):
-    signal = Signal.objects.get(pk=signal_id)
-    signal_df = pd.DataFrame.from_records(signal.get_series().values("date", signal._value_accessor), index="date")
+def _build_asset_df(asset_df):
+    ret_df = asset_df.copy()
+
+    cal_days_index = pd.date_range(ret_df.index.min(), ret_df.index.max())
+    ret_df = ret_df.reindex(cal_days_index)
+    ret_df = ret_df.fillna(method="bfill")
+    ret_df.index = ret_df.index.tz_localize(None)
+    return ret_df
+
+
+def _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_window, holding_period, ignore_overlapping):
     signal_df.index = pd.to_datetime(signal_df.index)
     signal_df_rolling = signal_df.rolling(rolling_window)
     z_scores = (signal_df - signal_df_rolling.mean()) / signal_df_rolling.std()
-    exceedances = z_scores.loc[z_scores[signal._value_accessor] > alpha]
+    exceedances = z_scores.loc[z_scores[value_accessor] > alpha]
     exceedance_dates = exceedances.index
     if ignore_overlapping:
         exceedance_dates = exceedance_dates[~(exceedance_dates.to_series().diff() < pd.Timedelta(days=holding_period))]
@@ -27,14 +30,7 @@ def get_signal_exceedance_dates(signal_id, alpha, rolling_window, holding_period
     }
 
 
-def get_trade_returns(asset_id, holding_period, trade_dates):
-    asset = Asset.objects.get(pk=asset_id)
-    asset_df = pd.DataFrame.from_records(asset.prices.all().values("datetime", "price"), index="datetime",
-                                         coerce_float=True).sort_index()
-    cal_days_index = pd.date_range(asset_df.index.min(), asset_df.index.max())
-    asset_df = asset_df.reindex(cal_days_index)
-    asset_df = asset_df.fillna(method="bfill")
-    asset_df.index = asset_df.index.tz_localize(None)
+def _get_trade_returns(asset_df, holding_period, trade_dates):
     open_price_df = asset_df.loc[trade_dates]
     close_price_df = asset_df.shift(-holding_period).loc[trade_dates]
     trade_returns_df = (close_price_df - open_price_df) / open_price_df
@@ -50,7 +46,24 @@ def get_trade_returns(asset_id, holding_period, trade_dates):
     }
 
 
-def get_trade_statistics(trade_returns_df, asset_df):
+def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_window,
+                         holding_period, ignore_overlapping):
+    """
+    signal_df: DataFrame of a signal's values with a DatetimeIndex and 1 column of values
+    value_accessor: Column which contains the data for the provided signal_df
+    asset_df: DataFrame with a DatetimeIndex and 1 column named "price"
+    holding_period: Either a single holding period, or an iterable with multiple periods
+    """
+    exceedances = _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_window,
+                                               holding_period, ignore_overlapping)
+    trade_dates = exceedances["open_dates"]
+    mod_asset_df = _build_asset_df(asset_df)
+
+    trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates)
+    trade_returns_df = trade_returns["trade_returns"]
+    open_price_df = trade_returns["open_price"]
+    close_price_df = trade_returns["close_price"]
+
     # for use with groupby object aggregation
     def _get_positive_trade_pct(returns):
         try:
@@ -72,7 +85,7 @@ def get_trade_statistics(trade_returns_df, asset_df):
         summary_statistics_dict = {}
 
     summary_statistics = []
-    for year in asset_df.index.year.unique():
+    for year in mod_asset_df.index.year.unique():
         values = summary_statistics_dict.get(year,
                                              {"number_of_trades": 0, "hit_rate": np.nan, "mean_return": np.nan})
         values["year"] = year
