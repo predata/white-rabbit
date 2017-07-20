@@ -1,5 +1,7 @@
+build/
+dist/
+*egg*
+
 venv*
-
 *.pyc
-
 .DS_store
