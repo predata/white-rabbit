@@ -49,10 +49,13 @@ def _get_trade_returns(asset_df, holding_period, trade_dates):
 def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_window,
                          holding_period, ignore_overlapping):
     """
+    Calculate number of trades, hit rate, and mean return of trade returns
+
     signal_df: DataFrame of a signal's values with a DatetimeIndex and 1 column of values
     value_accessor: Column which contains the data for the provided signal_df
     asset_df: DataFrame with a DatetimeIndex and 1 column named "price"
-    holding_period: Either a single holding period, or an iterable with multiple periods
+    holding_period: Integer, days to hold position
+    ignore_overlapping: Boolean, ignore overlapping trade triggers
     """
     exceedances = _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_window,
                                                holding_period, ignore_overlapping)
@@ -106,3 +109,30 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
         "summary_statistics": summary_statistics,
         "trade_details": trade_details,
     }
+
+
+def get_trade_percentiles(signal_df, value_accessor, asset_df, alpha, rolling_window,
+                         holding_periods, ignore_overlapping, percentiles):
+    """
+    Calculate percentiles of trade returns
+
+    signal_df: DataFrame of a signal's values with a DatetimeIndex and 1 column of values
+    value_accessor: Column which contains the data for the provided signal_df
+    asset_df: DataFrame with a DatetimeIndex and 1 column named "price"
+    holding_periods: List of holding periods
+    ignore_overlapping: Boolean, ignore overlapping trade triggers
+    percentiles: List of percentiles to return
+    """
+    dist = {}
+    for holding_period in holding_periods:
+        exceedances = _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_window,
+                                                   holding_period, ignore_overlapping)
+        trade_dates = exceedances["open_dates"]
+        mod_asset_df = _build_asset_df(asset_df)
+
+        trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates)
+        quantiles = [pct / 100.0 for pct in percentiles]
+        quantile_values = trade_returns["trade_returns"]["return"].quantile(quantiles)
+        quantile_values.index = (quantile_values.index * 100).astype("int")
+        dist[holding_period] = quantile_values.to_dict()
+    return dist
