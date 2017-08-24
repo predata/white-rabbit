@@ -30,10 +30,13 @@ def _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_windo
     }
 
 
-def _get_trade_returns(asset_df, holding_period, trade_dates):
+def _get_trade_returns(asset_df, holding_period, trade_dates, is_buy):
     open_price_df = asset_df.loc[trade_dates]
     close_price_df = asset_df.shift(-holding_period).loc[trade_dates]
-    trade_returns_df = (close_price_df - open_price_df) / open_price_df
+    if is_buy:
+        trade_returns_df = (close_price_df - open_price_df) / open_price_df
+    else:
+        trade_returns_df = (open_price_df - close_price_df) / open_price_df
 
     open_price_df = open_price_df.rename(columns={"price": "open_price"})
     close_price_df = close_price_df.rename(columns={"price": "close_price"})
@@ -47,7 +50,7 @@ def _get_trade_returns(asset_df, holding_period, trade_dates):
 
 
 def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_window,
-                         holding_period, ignore_overlapping):
+                         holding_period, ignore_overlapping, is_buy):
     """
     Calculate number of trades, hit rate, and mean return of trade returns
 
@@ -56,13 +59,14 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
     asset_df: DataFrame with a DatetimeIndex and 1 column named "price"
     holding_period: Integer, days to hold position
     ignore_overlapping: Boolean, ignore overlapping trade triggers
+    is_buy: Boolean, action is buy (True) or sell (False)
     """
     exceedances = _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_window,
                                                holding_period, ignore_overlapping)
     trade_dates = exceedances["open_dates"]
     mod_asset_df = _build_asset_df(asset_df)
 
-    trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates)
+    trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates, is_buy)
     trade_returns_df = trade_returns["trade_returns"]
     open_price_df = trade_returns["open_price"]
     close_price_df = trade_returns["close_price"]
@@ -112,7 +116,7 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
 
 
 def get_trade_percentiles(signal_df, value_accessor, asset_df, alpha, rolling_window,
-                         holding_periods, ignore_overlapping, percentiles):
+                          holding_periods, ignore_overlapping, is_buy, percentiles):
     """
     Calculate percentiles of trade returns
 
@@ -121,6 +125,7 @@ def get_trade_percentiles(signal_df, value_accessor, asset_df, alpha, rolling_wi
     asset_df: DataFrame with a DatetimeIndex and 1 column named "price"
     holding_periods: List of holding periods
     ignore_overlapping: Boolean, ignore overlapping trade triggers
+    is_buy: Boolean, action is buy (True) or sell (False)
     percentiles: List of percentiles to return
     """
     dist = {}
@@ -130,7 +135,7 @@ def get_trade_percentiles(signal_df, value_accessor, asset_df, alpha, rolling_wi
         trade_dates = exceedances["open_dates"]
         mod_asset_df = _build_asset_df(asset_df)
 
-        trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates)
+        trade_returns = _get_trade_returns(mod_asset_df, holding_period, trade_dates, is_buy)
         quantiles = [pct / 100.0 for pct in percentiles]
         quantile_values = trade_returns["trade_returns"]["return"].quantile(quantiles)
         quantile_values.index = (quantile_values.index * 100).astype("int")
