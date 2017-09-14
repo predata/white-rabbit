@@ -61,10 +61,12 @@ def _get_trade_returns(asset_df, holding_period, trade_dates, is_buy):
     }
 
 
-def _get_cumulative_returns(open_pos, close_pos, prices):
+def _get_cumulative_returns(open_pos, close_pos, prices, is_buy):
     # value of open positions + value of closed positions
-    return ((open_pos - close_pos).cumsum() * prices + (prices * (close_pos - open_pos)).cumsum())
-
+    if is_buy:
+        return ((open_pos - close_pos).cumsum() * prices + (prices * (close_pos - open_pos)).cumsum())
+    else:
+        return ((close_pos - open_pos).cumsum() * prices + (prices * (open_pos - close_pos)).cumsum())
 
 def _get_daily_returns(cumulative_returns):
     daily_returns = cumulative_returns.apply(np.log1p).diff().apply(np.exp) - 1
@@ -196,7 +198,7 @@ def get_trade_returns(signal_df, value_accessor, asset_df, alpha, rolling_window
     close_trade = close_trade.groupby(close_trade.index).sum().reindex(mod_asset_df.index, fill_value=0)
     open_trade = open_trade.reindex(mod_asset_df.index, fill_value=0)
 
-    cumulative_returns = _get_cumulative_returns(open_trade, close_trade, mod_asset_df["price"])
+    cumulative_returns = _get_cumulative_returns(open_trade, close_trade, mod_asset_df["price"], is_buy)
     daily_returns = _get_daily_returns(cumulative_returns)
 
     first_date = mod_asset_df.index.min()
@@ -205,7 +207,7 @@ def get_trade_returns(signal_df, value_accessor, asset_df, alpha, rolling_window
     benchmark_open_trade = pd.Series(1 / start_price, [first_date])
     benchmark_close_trade = pd.Series(benchmark_open_trade.values, [last_date]).reindex(mod_asset_df.index, fill_value=0)
     benchmark_open_trade = benchmark_open_trade.reindex(mod_asset_df.index, fill_value=0)
-    benchmark_returns = _get_cumulative_returns(benchmark_open_trade, benchmark_close_trade, mod_asset_df["price"])
+    benchmark_returns = _get_cumulative_returns(benchmark_open_trade, benchmark_close_trade, mod_asset_df["price"], is_buy)
 
     return {
         "cumulative_returns": cumulative_returns,
