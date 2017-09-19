@@ -39,6 +39,7 @@ def _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_windo
         "open_dates": trade_dates,
         "close_dates": close_dates,
         "trigger_dates": exceedance_dates,
+        "z_scores": exceedances.shift(1, freq="B"),
     }
 
 
@@ -135,7 +136,8 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
     trade_details = pd.concat([trade_returns_df, open_price_df, close_price_df], axis=1)
     trade_details["date"] = trade_details.index.date
     trade_details["close_date"] = exceedances["close_dates"].date
-    trade_details["trigger_date"] = exceedances["trigger_dates"].strftime("%a %Y-%m-%d")
+    trade_details["trigger_date"] = exceedances["trigger_dates"].strftime("%Y-%m-%d")
+    trade_details["z_score"] = exceedances["z_scores"]
     trade_details = trade_details.to_dict("records")
 
     return {
