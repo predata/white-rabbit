@@ -137,7 +137,7 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
     trade_details = pd.concat([trade_returns_df, open_price_df, close_price_df], axis=1)
     trade_details["date"] = trade_details.index.date
     trade_details["close_date"] = exceedances["close_dates"].date
-    trade_details["trigger_date"] = exceedances["trigger_dates"].strftime("%Y-%m-%d")
+    trade_details["trigger_date"] = exceedances["trigger_dates"].date
     trade_details = trade_details.join(exceedances["z_scores"])
     trade_details = trade_details.to_dict("records")
 
