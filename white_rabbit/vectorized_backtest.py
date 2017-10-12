@@ -20,7 +20,7 @@ def _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_windo
     signal_df_rolling = signal_df.rolling(rolling_window)
     z_scores = (signal_df - signal_df_rolling.mean()) / signal_df_rolling.std()
     exceedances = z_scores.loc[z_scores[value_accessor] > alpha]
-    exceedances = exceedances.rename(columns={"level": "z_score"})
+    exceedances.columns = ["z_score"]
     exceedance_dates = exceedances.index
     trade_dates = exceedance_dates + BDay()
     close_dates = trade_dates + pd.DateOffset(days=holding_period) + (0 * BDay())
@@ -29,18 +29,21 @@ def _get_signal_exceedance_dates(signal_df, value_accessor, alpha, rolling_windo
         open_trade = pd.Series(True, trade_dates)
         close_dates_lookup = pd.Series(close_dates, trade_dates)
         close_dates_lookup = close_dates_lookup[~close_dates_lookup.index.duplicated()]
+        trade_dates_lookup = pd.Series(trade_dates, exceedance_dates)
         for date in trade_dates:
             if not open_trade[~open_trade.index.duplicated()].loc[date]:
                 continue
             open_trade.loc[date + pd.DateOffset(1):close_dates_lookup.loc[date]] = False
         trade_dates = open_trade[open_trade].index
         close_dates = trade_dates + pd.DateOffset(days=holding_period) + (0 * BDay())
-        exceedance_dates = trade_dates - BDay()
+        exceedance_dates = trade_dates_lookup[trade_dates_lookup.isin(trade_dates)].index
+        exceedances = exceedances.loc[exceedance_dates]
+
     return {
         "open_dates": trade_dates,
         "close_dates": close_dates,
         "trigger_dates": exceedance_dates,
-        "z_scores": exceedances.shift(1, freq="B"),
+        "z_scores": exceedances
     }
 
 
@@ -138,7 +141,7 @@ def get_trade_statistics(signal_df, value_accessor, asset_df, alpha, rolling_win
     trade_details["date"] = trade_details.index.date
     trade_details["close_date"] = exceedances["close_dates"].date
     trade_details["trigger_date"] = exceedances["trigger_dates"].date
-    trade_details = trade_details.join(exceedances["z_scores"])
+    trade_details["z_scores"] = exceedances["z_scores"]["z_score"].values
     trade_details = trade_details.to_dict("records")
 
     return {
