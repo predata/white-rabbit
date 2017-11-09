@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name="white_rabbit",
-      version="0.0.5",
+      version="0.0.7",
       description="Vectorized summary stats computation",
       url="https://github.com/predata/white-rabbit",
       author="Predata",

@@ -1,0 +1,3 @@
+test:
+  override:
+    - python -m unittest discover -s ./white_rabbit/test
