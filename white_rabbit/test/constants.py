@@ -398,8 +398,8 @@ _benchmark_returns = [
     0.04695134302102699, 0.14293419122475948, 0.16894036093125053, -0.05033675214278599, -0.10454263892012161
 ]
 
-SIGNAL_DF = pd.DataFrame(_levels, columns=["level"], index=_cal_date_range)
-ASSET_DF = pd.DataFrame(_prices, columns=["price"], index=_bus_date_range)
+SIGNAL_SERIES = pd.Series(_levels, index=_cal_date_range)
+ASSET_SERIES = pd.Series(_prices, index=_bus_date_range)
 
 TRADE_STATISTICS = {
     "trade_details": [

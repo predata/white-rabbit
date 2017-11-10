@@ -9,9 +9,8 @@ import white_rabbit.vectorized_backtest as vectorized_backtest
 
 class VectorizedBacktestTestCase(unittest.TestCase):
     def setUp(self):
-        self.signal_df = constants.SIGNAL_DF
-        self.value_accessor = "level"
-        self.asset_df = constants.ASSET_DF
+        self.signal_series = constants.SIGNAL_SERIES
+        self.asset_series = constants.ASSET_SERIES
         self.alpha = 1.5
         self.rolling_window = 100
         self.holding_period = 10
@@ -25,9 +24,8 @@ class VectorizedBacktestTestCase(unittest.TestCase):
 
     def test_get_trade_statistics(self):
         trade_statistics = vectorized_backtest.get_trade_statistics(
-            self.signal_df,
-            self.value_accessor,
-            self.asset_df,
+            self.signal_series,
+            self.asset_series,
             self.alpha,
             self.rolling_window,
             self.holding_period,
@@ -38,9 +36,8 @@ class VectorizedBacktestTestCase(unittest.TestCase):
 
     def test_get_trade_percentiles(self):
         trade_percentiles = vectorized_backtest.get_trade_percentiles(
-            self.signal_df,
-            self.value_accessor,
-            self.asset_df,
+            self.signal_series,
+            self.asset_series,
             self.alpha,
             self.rolling_window,
             self.holding_periods,
@@ -52,9 +49,8 @@ class VectorizedBacktestTestCase(unittest.TestCase):
 
     def test_get_trade_returns(self):
         trade_returns = vectorized_backtest.get_trade_returns(
-            self.signal_df,
-            self.value_accessor,
-            self.asset_df,
+            self.signal_series,
+            self.asset_series,
             self.alpha,
             self.rolling_window,
             self.holding_period,
